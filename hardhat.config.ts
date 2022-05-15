@@ -1,6 +1,6 @@
 import * as dotenv from "dotenv";
 
-import { HardhatUserConfig, task } from "hardhat/config";
+import { HardhatUserConfig } from "hardhat/config";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
@@ -9,34 +9,57 @@ import "solidity-coverage";
 
 dotenv.config();
 
-// This is a sample Hardhat task. To learn how to create your own go to
-// https://hardhat.org/guides/create-task.html
-task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
-  const accounts = await hre.ethers.getSigners();
-
-  for (const account of accounts) {
-    console.log(account.address);
-  }
-});
-
-// You need to export an object to set up your config
-// Go to https://hardhat.org/config/ to learn more
+const POLYGON_RPC_URL =
+  process.env.POLYGON_RPC_URL ||
+  "https://polygon-mainnet.alchemyapi.io/v2/your-api-key";
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+const POLYGONSCAN_API_KEY =
+  process.env.POLYGONSCAN_API_KEY || "Your polygonscan API key";
+const FORKING_BLOCK_NUMBER = process.env.FORKING_BLOCK_NUMBER;
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.4",
+  defaultNetwork: "hardhat",
+
+  solidity: {
+    compilers: [
+      {
+        version: "0.8.7",
+      },
+    ],
+  },
   networks: {
-    ropsten: {
-      url: process.env.ROPSTEN_URL || "",
-      accounts:
-        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    hardhat: {
+      forking: {
+        url: POLYGON_RPC_URL,
+        blockNumber: Number(FORKING_BLOCK_NUMBER),
+        enabled: true,
+      },
+      chainId: 31337,
+    },
+    localhost: {
+      chainId: 31337,
+    },
+    polygon: {
+      url: POLYGON_RPC_URL,
+      accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
+      chainId: 137,
     },
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
     currency: "USD",
+    outputFile: "gas-report.txt",
+    noColors: true,
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    // yarn hardhat verify --network <NETWORK> <CONTRACT_ADDRESS> <CONSTRUCTOR_PARAMETERS>
+    apiKey: {
+      polygon: POLYGONSCAN_API_KEY,
+    },
+  },
+  typechain: {
+    outDir: "typechain",
+    target: "ethers-v5",
   },
 };
 
