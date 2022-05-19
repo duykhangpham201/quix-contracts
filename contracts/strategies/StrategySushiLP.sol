@@ -172,6 +172,25 @@ contract StrategySushiLP is StrategyManager {
         IUniswapRouterETH(unirouter).addLiquidity(lpToken0, lpToken1, lp0Bal, lp1Bal, 1, 1, address(this), block.timestamp);
     }
 
+    function panic() public onlyOwner {
+        pause();
+        IMiniChefV2(chef).emergencyWithdraw(poolId, address(this));
+    }
+
+    function pause() public onlyOwner {
+        _pause();
+
+        _removeAllowances();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
+
+        _giveAllowances();
+
+        deposit();
+    }
+
     function _giveAllowances() internal {
         IERC20(want).safeApprove(chef, type(uint256).max);
         IERC20(output).safeApprove(unirouter, type(uint256).max);
