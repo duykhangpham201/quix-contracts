@@ -25,6 +25,7 @@ contract StrategyQuickSwap is StrategyManager {
     address[] public outputToNativeRoute;
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
+    address[] public lpToken1ToLpToken0Route;
 
     bool public harvestOnDeposit;
     uint256 public lastHarvest;
@@ -42,7 +43,8 @@ contract StrategyQuickSwap is StrategyManager {
         uint256 _fee,
         address[] memory _outputToNativeRoute,
         address[] memory _outputToLp0Route,
-        address[] memory _outputToLp1Route
+        address[] memory _outputToLp1Route,
+        address[] memory _lpToken1ToLpToken0Route
     ) public StrategyManager(
         _unirouter, _vault, _feeRecipient, _fee
     ) {
@@ -58,6 +60,8 @@ contract StrategyQuickSwap is StrategyManager {
 
         lpToken1 = IUniswapV2Pair(want).token1();
         outputToLp1Route = _outputToLp1Route;
+
+        lpToken1ToLpToken0Route = _lpToken1ToLpToken0Route;
 
         _giveAllowances();
     }
@@ -76,16 +80,15 @@ contract StrategyQuickSwap is StrategyManager {
 
         uint256 wantBal = balanceOfWant();
 
-        if (wantBal < _amount) {
-            IRewardPool(rewardPool).withdraw(_amount - wantBal);
-            wantBal = balanceOfWant();
+        IRewardPool(rewardPool).withdraw(wantBal);
+        
+        IUniswapRouterETH(unirouter).removeLiquidity(lpToken0, lpToken1, wantBal, _amount/2, _amount/2, address(this), block.timestamp);
+        if(IERC20(lpToken0).balanceOf(address(this)) < _amount) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(_amount/2, 0, lpToken1ToLpToken0Route, address(this), block.timestamp);
         }
 
-        if (wantBal > _amount) {
-            wantBal = _amount;
-        }
-
-        IERC20(want).safeTransfer(vault, wantBal);
+        IERC20(want).safeTransfer(lpToken0, _amount);
+        deposit();
 
         emit Withdraw(balanceOf());
     }
@@ -148,6 +151,10 @@ contract StrategyQuickSwap is StrategyManager {
 
     function balanceOfPool() public view returns (uint256) {
         return IRewardPool(rewardPool).balanceOf(address(this));
+    }
+
+    function getLpToken0() public view returns (address) {
+        return lpToken0;
     }
 
     function panic() public onlyOwner {

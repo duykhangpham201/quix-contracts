@@ -6,7 +6,6 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IStrategy} from "../interfaces/quix/IStrategy.sol";
-import {IReserve} from "../interfaces/quix/IReserve.sol";
 
 contract QuixVault is ERC20, Ownable, ReentrancyGuard {
     address public reserve;
@@ -55,9 +54,8 @@ contract QuixVault is ERC20, Ownable, ReentrancyGuard {
         _mint(msg.sender, _amount);
     }
 
-    function withdraw(address _token, uint256 _amount) external updateReward(msg.sender) nonReentrant {
+    function withdraw(uint256 _amount) external updateReward(msg.sender) nonReentrant {
         require(_amount > 0, "!amount");
-        require(allowedTokensMapping[_token] == true, "!allowedTokens");
 
         uint256 qBalance = IERC20(address(this)).balanceOf(msg.sender);
         require(qBalance >= _amount, "!amount");
@@ -66,9 +64,10 @@ contract QuixVault is ERC20, Ownable, ReentrancyGuard {
         uint256 allocatingIndex = _mostAllocated();
         IStrategy(strategies[allocatingIndex]).withdraw(_amount);
 
-        emit Withdraw(msg.sender, _amount);
+        address token0 = IStrategy(strategies[allocatingIndex]).getLpToken0();
 
-        IERC20(_token).transfer(msg.sender, _amount);
+        emit Withdraw(msg.sender, _amount);
+        IERC20(token0).transfer(msg.sender, _amount);
     }
 
     function addStrategy(address _strategy) external onlyOwner {
@@ -90,15 +89,18 @@ contract QuixVault is ERC20, Ownable, ReentrancyGuard {
         return qBalance * rewardPerToken(); 
     } 
 
-    function claimReward(uint256 tokenIndex) external updateReward(msg.sender) nonReentrant {
+    function claimReward() external updateReward(msg.sender) nonReentrant {
         uint256 reward = rewards[msg.sender];
         rewards[msg.sender] = 0;
         _burn(msg.sender, reward);
 
         emit RewardsClaimed(msg.sender, reward);
-        IReserve(reserve).withdraw(allowedTokens[tokenIndex], reward);
+        uint256 allocatingIndex = _mostAllocated();
+        IStrategy(strategies[allocatingIndex]).withdraw(reward);
 
-        IERC20(allowedTokens[tokenIndex]).transfer(msg.sender, reward);
+        address token0 = IStrategy(strategies[allocatingIndex]).getLpToken0();
+
+        IERC20(token0).transfer(msg.sender, reward);
     }
 
     function _leastAllocated() internal view returns (uint256) {

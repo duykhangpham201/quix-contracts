@@ -29,6 +29,7 @@ contract StrategySushiLP is StrategyManager {
     address[] public nativeToOutputRoute;
     address[] public outputToLp0Route;
     address[] public outputToLp1Route;
+    address[] public lpToken1ToLpToken0Route;
 
     event StratHarvest(address indexed harvest, uint256 wantHarvested, uint256 tvl);
     event Deposit(uint256 tvl);
@@ -44,7 +45,8 @@ contract StrategySushiLP is StrategyManager {
         uint256 _fee,
         address[] memory _outputToNativeRoute,
         address[] memory _outputToLp0Route,
-        address[] memory _outputToLp1Route
+        address[] memory _outputToLp1Route,
+        address[] memory _lpToken1ToLpToken0Route
     ) public StrategyManager(
         _unirouter, _vault, _feeRecipient, _fee
     ) {
@@ -73,6 +75,7 @@ contract StrategySushiLP is StrategyManager {
             nativeToOutputRoute[i] = outputToNativeRoute[idx];
         }
 
+        lpToken1ToLpToken0Route = _lpToken1ToLpToken0Route;
         _giveAllowances();
     }
 
@@ -86,20 +89,22 @@ contract StrategySushiLP is StrategyManager {
     }
 
     function withdraw(uint256 _amount) external {
+        
         require(msg.sender == vault, "!vault");
 
-        uint256 wantBal = IERC20(want).balanceOf(address(this));
+        uint256 wantBal = balanceOfWant();
 
-        if (wantBal < _amount) {
-            IMiniChefV2(chef).withdraw(poolId, _amount - wantBal, address(this));
-            wantBal = IERC20(want).balanceOf(address(this));
+        IMiniChefV2(chef).withdraw(poolId, wantBal, address(this));
+        
+        IUniswapRouterETH(unirouter).removeLiquidity(lpToken0, lpToken1, wantBal, _amount/2, _amount/2, address(this), block.timestamp);
+        if(IERC20(lpToken0).balanceOf(address(this)) < _amount) {
+            IUniswapRouterETH(unirouter).swapExactTokensForTokens(_amount/2, 0, lpToken1ToLpToken0Route, address(this), block.timestamp);
         }
 
-        if (wantBal > _amount) {
-            wantBal = _amount;
-        }
+        IERC20(want).safeTransfer(lpToken0, _amount);
+        deposit();
 
-        IERC20(want).safeTransfer(vault, wantBal);
+        emit Withdraw(balanceOf());
     }
 
     function beforeDeposit() external virtual {
@@ -124,6 +129,10 @@ contract StrategySushiLP is StrategyManager {
     function balanceOfPool() public view returns (uint256) {
         (uint256 _amount,) = IMiniChefV2(chef).userInfo(poolId, address(this));
         return _amount;
+    }
+
+    function getLpToken0() public view returns (address) {
+        return lpToken0;
     }
 
     function _harvest() internal whenNotPaused {

@@ -14,4 +14,5 @@ interface IStrategy {
     function pause() external;
     function unpause() external;
     function paused() external view returns (bool);
+    function getLpToken0() external view returns(address);
 }
