@@ -61,7 +61,8 @@ contract StrategyCurve is StrategyManager, GasThrottler {
         _unirouter, _vault, _feeRecipient, _fee
     ) GasThrottler(_gasPrice) {
         want = _want;
-        gaugeFactory = _gauge;
+        gaugeFactory = _gaugeFactory;
+        rewardsGauge = _gauge;
         pool = _pool;
         poolSize = _poolSize;
         depositIndex = _depositIndex;
