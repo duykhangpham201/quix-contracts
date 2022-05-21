@@ -19,13 +19,18 @@ const FORKING_BLOCK_NUMBER = process.env.FORKING_BLOCK_NUMBER;
 
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
-
   solidity: {
     compilers: [
       {
         version: "0.8.7",
       },
     ],
+    settings: {
+      optimizer: {
+        runs: 200,
+        enabled: true,
+      },
+    },
   },
   networks: {
     hardhat: {

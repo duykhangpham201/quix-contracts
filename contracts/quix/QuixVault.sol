@@ -30,15 +30,11 @@ contract QuixVault is ERC20, Ownable, ReentrancyGuard {
     }
 
     constructor(
-        address _reserve,
         string memory _name,
         string memory _symbol,
-        address[] memory _allowedTokens,
         uint256 _rewardRate
     ) public ERC20(_name, _symbol) {
-        allowedTokens = _allowedTokens;
         rewardRate = _rewardRate;
-        reserve = _reserve;
     }   
 
     function enter(address _token, uint256 _amount) external updateReward(msg.sender) nonReentrant {
@@ -79,8 +75,20 @@ contract QuixVault is ERC20, Ownable, ReentrancyGuard {
         strategies.pop();
     }
 
+    function addAllowedTokens(address _token) external onlyOwner {
+        allowedTokens.push(_token);
+        allowedTokensMapping[_token] = true;
+    }
+
+    function retireTokens(uint256 _index) external onlyOwner {
+        address token = allowedTokens[_index];
+        allowedTokens[_index] = allowedTokens[allowedTokens.length -1];
+        allowedTokens.pop();
+        allowedTokensMapping[token] = false;
+    }
+
     function rewardPerToken() public view returns (uint256) {
-        return (block.timestamp - lastUpdateTime) * rewardRate * 1e18;
+        return (block.timestamp - lastUpdateTime) * rewardRate * 1e16;
     }
 
     function earned(address _user) public view returns (uint256) {
@@ -132,6 +140,4 @@ contract QuixVault is ERC20, Ownable, ReentrancyGuard {
 
         return allocatingIndex;
     }
-
-
 }
