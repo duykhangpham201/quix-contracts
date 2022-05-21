@@ -3,6 +3,10 @@ import { waffle } from "hardhat";
 import { unitVaultFixture } from "../shared/vaultFixture";
 import { Mocks, Signers } from "../shared/types";
 import { vaultTest } from "./vault.spec";
+import {
+  unitStratSushiFixture,
+  unitStratQuickFixture,
+} from "./../shared/stratFixture";
 
 describe("Unit tests", async () => {
   before(async function () {
@@ -24,7 +28,22 @@ describe("Unit tests", async () => {
       this.mocks = {} as Mocks;
       this.mocks.mockUsdc = mockUsdc;
     });
+    vaultTest();
+  });
 
+  describe("strategy", async () => {
+    beforeEach(async function () {
+      const { stratSushi, mockUsdc, mockUsdt, mockOutput } =
+        await this.loadFixture(unitStratSushiFixture);
+      const { stratQuick } = await this.loadFixture(unitStratQuickFixture);
+      this.stratSushi = stratSushi;
+      this.stratQuick = stratQuick;
+
+      this.mocks = {} as Mocks;
+      this.mocks.mockUsdc = mockUsdc;
+      this.mocks.mockUsdt = mockUsdt;
+      this.mocks.mockOutput = mockOutput;
+    });
     vaultTest();
   });
 });

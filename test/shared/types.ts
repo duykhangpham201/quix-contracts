@@ -11,6 +11,8 @@ export interface Signers {
 
 export interface Mocks {
   mockUsdc: MockContract;
+  mockUsdt: MockContract;
+  mockOutput: MockContract;
 }
 
 declare module "mocha" {
